@@ -1,4 +1,4 @@
-namespace MyApi.Settings
+namespace RealTimeChat.Settings
 {
     public class MongoDbSettings
     {

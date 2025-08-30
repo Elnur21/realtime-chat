@@ -1,6 +1,6 @@
 using MongoDB.Driver;
 
-namespace MyApi.Services
+namespace RealTimeChat.Services
 {
     public class MongoCollectionService<T>
     {

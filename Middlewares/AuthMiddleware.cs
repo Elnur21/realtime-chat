@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using System.Threading.Tasks;
 
-namespace MyApi.Middlewares
+namespace RealTimeChat.Middlewares
 {
     public class AuthMiddleware
     {

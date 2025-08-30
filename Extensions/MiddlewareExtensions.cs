@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Builder;
-using MyApi.Middlewares;
+using RealTimeChat.Middlewares;
 
-namespace MyApi.Extensions
+namespace RealTimeChat.Extensions
 {
     public static class MiddlewareExtensions
     {

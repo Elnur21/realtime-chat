@@ -1,9 +1,9 @@
 using MongoDB.Driver;
-using MyApi.Services;
-using MyApi.Models;
+using RealTimeChat.Services;
+using RealTimeChat.Models;
 using System.Reflection;
 
-namespace MyApi.Extensions
+namespace RealTimeChat.Extensions
 {
     public static class ServiceCollectionExtensions
     {
@@ -11,7 +11,7 @@ namespace MyApi.Extensions
         {
             var modelTypes = Assembly.GetAssembly(typeof(User))!
                 .GetTypes()
-                .Where(t => t.IsClass && t.Namespace == "MyApi.Models");
+                .Where(t => t.IsClass && t.Namespace == "RealTimeChat.Models");
 
             foreach (var type in modelTypes)
             {

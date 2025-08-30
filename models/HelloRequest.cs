@@ -1,4 +1,4 @@
-namespace MyApi.Models
+namespace RealTimeChat.Models
 {
     public class HelloRequest
     {

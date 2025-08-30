@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 
-using MyApi.Models;
+using RealTimeChat.Models;
 
-namespace MyApi.Controllers
+namespace RealTimeChat.Controllers
 {
     [ApiController]
     [Route("[controller]")]

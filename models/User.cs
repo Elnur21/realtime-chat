@@ -1,7 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace MyApi.Models
+namespace RealTimeChat.Models
 {
     public class User
     {
