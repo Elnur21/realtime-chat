@@ -1,19 +1,21 @@
 using MediatR;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver;
+using BCrypt.Net;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
+using RealTimeChat.Models;
+using RealTimeChat.Services;
+
 namespace RealTimeChat.Handlers.Commands
 {
-    public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
+    public class LoginCommandHandler(IConfiguration config, MongoCollectionService<User> userService) : IRequestHandler<LoginCommand, LoginResponse>
     {
-        private readonly IConfiguration _config;
+        private readonly IConfiguration _config = config;
 
-        public LoginCommandHandler(IConfiguration config)
-        {
-            _config = config;
-        }
+        private readonly IMongoCollection<User> _users = userService.Collection;
 
         public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
@@ -30,8 +32,10 @@ namespace RealTimeChat.Handlers.Commands
 
                 Console.WriteLine($"Login attempt for {request.Email}");
 
-                // Example: hardcoded user check
-                if (request.Email == "admin@test.com" && request.Password == "123456")
+
+
+                var user = await _users.Find(u => u.Email == request.Email).FirstOrDefaultAsync(cancellationToken);
+                if (user != null && BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
                 {
                     var token = await Task.Run(() => GenerateJwtToken(request.Email), cancellationToken);
                     return new LoginResponse
@@ -42,7 +46,6 @@ namespace RealTimeChat.Handlers.Commands
                         User = new UserInfo
                         {
                             Email = request.Email,
-                            Role = "User"
                         }
                     };
                 }
@@ -76,7 +79,6 @@ namespace RealTimeChat.Handlers.Commands
                 var claims = new[]
                 {
                     new Claim(ClaimTypes.Name, email),
-                    new Claim(ClaimTypes.Role, "User")
                 };
 
                 var token = new JwtSecurityToken(

@@ -1,4 +1,5 @@
 using MediatR;
+using BCrypt.Net;
 using MongoDB.Driver;
 using RealTimeChat.Models;
 using RealTimeChat.Services;
@@ -41,7 +42,8 @@ namespace RealTimeChat.Handlers.Commands
                 var user = new User
                 {
                     Name = request.Name,
-                    Email = request.Email
+                    Email = request.Email,
+                    Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 };
 
                 await _users.InsertOneAsync(user, cancellationToken: cancellationToken);

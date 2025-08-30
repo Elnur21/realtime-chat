@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using RealTimeChat.Models;
 using MediatR;
+
+using RealTimeChat.Models;
 using RealTimeChat.Handlers.Queries;
 using RealTimeChat.Handlers.Commands;
 
@@ -53,7 +54,8 @@ namespace RealTimeChat.Controllers
             var command = new CreateUserCommand
             {
                 Name = user.Name,
-                Email = user.Email
+                Email = user.Email,
+                Password = user.Password
             };
             
             var response = await _mediator.Send(command);

@@ -67,11 +67,9 @@ namespace RealTimeChat.Controllers
         public IActionResult GetCurrentUser()
         {
             var userEmail = User.Identity?.Name;
-            var userRole = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
             
             return Ok(new { 
                 email = userEmail,
-                role = userRole,
                 message = "Token is valid"
             });
         }
