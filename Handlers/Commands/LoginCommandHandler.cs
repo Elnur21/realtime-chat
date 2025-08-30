@@ -71,8 +71,7 @@ namespace RealTimeChat.Handlers.Commands
         {
             try
             {
-                // Use a simple, hardcoded key for testing
-                var key = "MySecretKey123456789012345678901234567890";
+                var key =_config.GetSection("Key").Value ?? "MySecretKey123456789012345678901234567890";
                 var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
                 var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
@@ -82,8 +81,8 @@ namespace RealTimeChat.Handlers.Commands
                 };
 
                 var token = new JwtSecurityToken(
-                    issuer: "RealTimeChat",
-                    audience: "RealTimeChatUsers",
+                    issuer: _config.GetSection("Issuer").Value ?? "RealTimeChatIssuer",
+                    audience: _config.GetSection("Audience").Value ?? "RealTimeChatAudience",
                     claims: claims,
                     expires: DateTime.Now.AddHours(1),
                     signingCredentials: credentials

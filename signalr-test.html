@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignalR Chat Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .message {
+            background-color: #e7f3ff;
+            color: #0c5460;
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .group-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>SignalR Chat Test</h1>
+    
+    <div class="container">
+        <h2>1. Authentication</h2>
+        <input type="email" id="email" placeholder="Email" value="admin@test.com">
+        <input type="password" id="password" placeholder="Password" value="123456">
+        <button onclick="login()">Login</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>2. SignalR Connection</h2>
+        <button onclick="connectSignalR()" id="connectBtn">Connect to SignalR</button>
+        <button onclick="disconnectSignalR()" id="disconnectBtn" disabled>Disconnect</button>
+        <div id="connectionResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>3. Send Message</h2>
+        <input type="text" id="messageInput" placeholder="Enter your message">
+        <button onclick="sendMessage()" id="sendBtn" disabled>Send Message</button>
+        <div id="messageResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>4. Group Chat</h2>
+        <div class="group-controls">
+            <input type="text" id="groupName" placeholder="Group name" value="general">
+            <button onclick="joinGroup()" id="joinBtn" disabled>Join Group</button>
+            <button onclick="leaveGroup()" id="leaveBtn" disabled>Leave Group</button>
+        </div>
+        <input type="text" id="groupMessageInput" placeholder="Enter group message">
+        <button onclick="sendGroupMessage()" id="sendGroupBtn" disabled>Send to Group</button>
+        <div id="groupResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>5. Connection Status</h2>
+        <div id="statusResult" class="result"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+    <script>
+        let authToken = '';
+        let email = '';
+        let connection = null;
+        let currentGroup = '';
+
+        async function login() {
+            email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                const response = await fetch('http://localhost:5192/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `Login successful!\nToken: ${data.token.substring(0, 50)}...`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `Login failed: ${data.message || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function connectSignalR() {
+            if (!authToken) {
+                alert('Please login first');
+                return;
+            }
+
+            const resultDiv = document.getElementById('connectionResult');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const sendBtn = document.getElementById('sendBtn');
+            const joinBtn = document.getElementById('joinBtn');
+
+            try {
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl(`http://localhost:5192/chatHub?access_token=${authToken}`, {
+                        skipNegotiation: true,
+                        transport: signalR.HttpTransportType.WebSockets
+                    })
+                    .withAutomaticReconnect()
+                    .build();
+
+                connection.on("ReceiveMessage", (user, message) => {
+                    addMessage(`[Global] ${user === email ? "You" : user}: ${message}`);
+                });
+
+                connection.on("ReceiveGroupMessage", (user, group, message) => {
+                    addMessage(`[${group}] ${user === email ? "You" : user}: ${message}`);
+                });
+
+                connection.on("UserConnected", (user) => {
+                    addMessage(`🔗 ${user === email ? "You" : user} connected`);
+                });
+
+                connection.on("UserDisconnected", (user) => {
+                    addMessage(`🔌 ${user === email ? "You" : user} disconnected`);
+                });
+
+                connection.on("UserJoined", (user, group) => {
+                    addMessage(`👋 ${user === email ? "You" : user} joined group: ${group}`);
+                });
+
+                connection.on("UserLeft", (user, group) => {
+                    addMessage(`👋 ${user === email ? "You" : user} left group: ${group}`);
+                });
+
+                await connection.start();
+                
+                resultDiv.className = 'result success';
+                resultDiv.textContent = 'SignalR connected successfully!';
+                
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                sendBtn.disabled = false;
+                joinBtn.disabled = false;
+
+                updateStatus('Connected');
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Connection failed: ${error.message}`;
+                updateStatus('Connection failed');
+            }
+        }
+
+        async function disconnectSignalR() {
+            if (connection) {
+                await connection.stop();
+                connection = null;
+                
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+                document.getElementById('sendBtn').disabled = true;
+                document.getElementById('joinBtn').disabled = true;
+                document.getElementById('leaveBtn').disabled = true;
+                document.getElementById('sendGroupBtn').disabled = true;
+                
+                document.getElementById('connectionResult').className = 'result';
+                document.getElementById('connectionResult').textContent = 'Disconnected from SignalR';
+                updateStatus('Disconnected');
+            }
+        }
+
+        async function sendMessage() {
+            if (!connection) {
+                alert('Please connect to SignalR first');
+                return;
+            }
+
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+
+            try {
+                await connection.invoke("SendMessage", message);
+                messageInput.value = '';
+            } catch (error) {
+                addMessage(`Error sending message: ${error.message}`);
+            }
+        }
+
+        async function joinGroup() {
+            if (!connection) {
+                alert('Please connect to SignalR first');
+                return;
+            }
+
+            const groupName = document.getElementById('groupName').value.trim();
+            if (!groupName) {
+                alert('Please enter a group name');
+                return;
+            }
+
+            try {
+                await connection.invoke("JoinGroup", groupName);
+                currentGroup = groupName;
+                document.getElementById('leaveBtn').disabled = false;
+                document.getElementById('sendGroupBtn').disabled = false;
+            } catch (error) {
+                addMessage(`Error joining group: ${error.message}`);
+            }
+        }
+
+        async function leaveGroup() {
+            if (!connection || !currentGroup) {
+                alert('Not in a group');
+                return;
+            }
+
+            try {
+                await connection.invoke("LeaveGroup", currentGroup);
+                addMessage(`Left group: ${currentGroup}`);
+                currentGroup = '';
+                document.getElementById('leaveBtn').disabled = true;
+                document.getElementById('sendGroupBtn').disabled = true;
+            } catch (error) {
+                addMessage(`Error leaving group: ${error.message}`);
+            }
+        }
+
+        async function sendGroupMessage() {
+            if (!connection || !currentGroup) {
+                alert('Please join a group first');
+                return;
+            }
+
+            const messageInput = document.getElementById('groupMessageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+
+            try {
+                await connection.invoke("SendMessageToGroup", currentGroup, message);
+                messageInput.value = '';
+            } catch (error) {
+                addMessage(`Error sending group message: ${error.message}`);
+            }
+        }
+
+        function addMessage(message) {
+            const resultDiv = document.getElementById('messageResult');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            resultDiv.appendChild(messageDiv);
+            resultDiv.scrollTop = resultDiv.scrollHeight;
+        }
+
+        function updateStatus(status) {
+            document.getElementById('statusResult').textContent = `Status: ${status}`;
+        }
+
+        // Handle Enter key for message inputs
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        document.getElementById('groupMessageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendGroupMessage();
+            }
+        });
+    </script>
+</body>
+</html>

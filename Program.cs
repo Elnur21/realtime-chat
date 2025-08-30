@@ -1,7 +1,5 @@
 using RealTimeChat.Settings;
 using MongoDB.Driver;
-using RealTimeChat.Extensions;
-using RealTimeChat.Middlewares;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -9,7 +7,14 @@ using System.Text;
 using MediatR;
 using System.Reflection;
 
+using RealTimeChat.Extensions;
+using RealTimeChat.Middlewares;
+using RealTimeChat.Hubs;
+
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSignalR();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -20,16 +25,32 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = "RealTimeChat",
-            ValidAudience = "RealTimeChatUsers",
+            ValidIssuer = builder.Configuration.GetSection("Issuer").Value ?? "RealTimeChatIssuer",
+            ValidAudience = builder.Configuration.GetSection("Audience").Value ?? "RealTimeChatAudience",
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes("MySecretKey123456789012345678901234567890")
+                Encoding.UTF8.GetBytes(builder.Configuration.GetSection("Key").Value ?? "MySecretKey123456789012345678901234567890")
             )
         };
-        
+
         // Don't require authentication by default
         options.RequireHttpsMetadata = false;
         options.SaveToken = true;
+
+        // Configure JWT for SignalR
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -59,9 +80,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll", policy =>
     {
         policy
-            .AllowAnyOrigin()
+            .SetIsOriginAllowed(_ => true)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials(); // required for SignalR
     });
 });
 
@@ -69,7 +91,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "RealTimeChat", Version = "v1" });
-    
+
     // Add JWT authentication to Swagger
     c.AddSecurityDefinition("Bearer", new()
     {
@@ -108,7 +130,10 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
+app.MapHub<ChatHub>("/chatHub");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+
 app.Run();
