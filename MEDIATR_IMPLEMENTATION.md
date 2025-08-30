@@ -25,7 +25,7 @@ MediatR is a simple mediator pattern implementation in .NET. It allows you to:
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
 ```
 
-### 3. Project Structure
+### 3. Project Structure example
 
 ```
 Handlers/
