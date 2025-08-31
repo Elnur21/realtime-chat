@@ -1,6 +1,7 @@
 using MongoDB.Driver;
 using RealTimeChat.Services;
 using RealTimeChat.Models;
+using RealTimeChat.Settings;
 using System.Reflection;
 
 namespace RealTimeChat.Extensions
@@ -19,6 +20,12 @@ namespace RealTimeChat.Extensions
                 var instance = Activator.CreateInstance(serviceType, client, databaseName);
                 services.AddSingleton(serviceType, instance!);
             }
+        }
+
+        public static void AddGeminiAiService(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.Configure<GeminiSettings>(configuration.GetSection("Gemini"));
+            services.AddHttpClient<IGeminiAiService, GeminiAiService>();
         }
     }
 }

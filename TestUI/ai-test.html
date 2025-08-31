@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type="checkbox"] {
+            width: auto;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+        }
+        .auth-section {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .token-input {
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Agent Test (Gemini AI)</h1>
+        
+        <div class="auth-section">
+            <h3>Authentication</h3>
+            <div class="form-group">
+                <label for="token">JWT Token (for authenticated requests):</label>
+                <input type="text" id="token" placeholder="Enter your JWT token here" class="token-input">
+            </div>
+            <button onclick="testAuth()">Test Authentication</button>
+        </div>
+
+        <div class="form-group">
+            <label for="question">Question:</label>
+            <textarea id="question" placeholder="Ask the AI agent anything..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="context">Context (optional):</label>
+            <textarea id="context" placeholder="Provide additional context for the question..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <div class="checkbox-group">
+                <input type="checkbox" id="requireAnswer" checked>
+                <label for="requireAnswer">Require Answer</label>
+            </div>
+        </div>
+
+        <button onclick="askQuestion(true)">Ask (Authenticated)</button>
+        <button onclick="askQuestion(false)">Ask (Public)</button>
+        <button onclick="testHealth()">Test Health</button>
+        <button onclick="clearResponse()">Clear Response</button>
+
+        <div id="response"></div>
+    </div>
+
+    <script>
+        const baseUrl = 'http://localhost:5192';
+
+        async function testAuth() {
+            const token = document.getElementById('token').value;
+            if (!token) {
+                showResponse('Please enter a JWT token first', false);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${baseUrl}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showResponse(`✅ Authentication successful!\nUser: ${data.email}\nMessage: ${data.message}`, true);
+                } else {
+                    showResponse(`❌ Authentication failed: ${data.message}`, false);
+                }
+            } catch (error) {
+                showResponse(`❌ Error: ${error.message}`, false);
+            }
+        }
+
+        async function askQuestion(authenticated) {
+            const question = document.getElementById('question').value;
+            const context = document.getElementById('context').value;
+            const requireAnswer = document.getElementById('requireAnswer').checked;
+
+            if (!question.trim()) {
+                showResponse('Please enter a question', false);
+                return;
+            }
+
+            const requestBody = {
+                question: question,
+                context: context || null,
+                requireAnswer: requireAnswer
+            };
+
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            if (authenticated) {
+                const token = document.getElementById('token').value;
+                if (!token) {
+                    showResponse('Please enter a JWT token for authenticated requests', false);
+                    return;
+                }
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            showLoading();
+
+            try {
+                const endpoint = authenticated ? '/ai/ask' : '/ai/ask-public';
+                const response = await fetch(`${baseUrl}${endpoint}`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ AI Response:\n\n${data.answer}\n\nModel: ${data.modelUsed}\nTimestamp: ${new Date(data.timestamp).toLocaleString()}`, true);
+                } else {
+                    showResponse(`❌ Error: ${data.message}`, false);
+                }
+            } catch (error) {
+                showResponse(`❌ Network error: ${error.message}`, false);
+            }
+        }
+
+        async function testHealth() {
+            try {
+                const response = await fetch(`${baseUrl}/ai/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResponse(`✅ Health Check:\n${data.message}\nService: ${data.service}\nTimestamp: ${new Date(data.timestamp).toLocaleString()}`, true);
+                } else {
+                    showResponse(`❌ Health check failed: ${data.message}`, false);
+                }
+            } catch (error) {
+                showResponse(`❌ Health check error: ${error.message}`, false);
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('response').innerHTML = '<div class="loading">🤔 AI is thinking...</div>';
+        }
+
+        function showResponse(message, isSuccess) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.className = `response ${isSuccess ? 'success' : 'error'}`;
+            responseDiv.textContent = message;
+        }
+
+        function clearResponse() {
+            document.getElementById('response').innerHTML = '';
+        }
+
+        // Example questions
+        function loadExampleQuestion() {
+            const examples = [
+                "What is the capital of France?",
+                "Explain quantum computing in simple terms",
+                "How do I make a chocolate cake?",
+                "What are the benefits of exercise?",
+                "Tell me a joke"
+            ];
+            
+            const randomExample = examples[Math.floor(Math.random() * examples.length)];
+            document.getElementById('question').value = randomExample;
+        }
+
+        // Load a random example on page load
+        window.onload = loadExampleQuestion;
+    </script>
+</body>
+</html>

@@ -70,6 +70,9 @@ builder.Services.AddSingleton<IMongoClient>(mongoClient);
 
 builder.Services.AddMongoCollections(mongoClient, mongoDbSettings.DatabaseName);
 
+// Add Gemini AI Service
+builder.Services.AddGeminiAiService(builder.Configuration);
+
 builder.Services.AddControllers();
 
 // Add MediatR

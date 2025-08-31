@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Enhanced Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 1000px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .connection-status {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-connected { background-color: #4CAF50; }
+        .status-disconnected { background-color: #f44336; }
+        .status-connecting { background-color: #ff9800; }
+
+        .chat-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .auth-section {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .auth-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .ai-controls {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .ai-controls h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .ai-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #007bff;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(26px);
+        }
+
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .messages-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 16px;
+        }
+
+        .message-user {
+            background: #007bff;
+        }
+
+        .message-ai {
+            background: #28a745;
+        }
+
+        .message-other {
+            background: #6c757d;
+        }
+
+        .message-content {
+            flex: 1;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 18px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 70%;
+        }
+
+        .message-user .message-content {
+            background: #007bff;
+            color: white;
+        }
+
+        .message-ai .message-content {
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
+        }
+
+        .message-header {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .message-text {
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .input-section {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 14px;
+            resize: none;
+            min-height: 50px;
+            max-height: 120px;
+            transition: border-color 0.3s;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .send-btn {
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        .send-btn:hover {
+            background: #0056b3;
+        }
+
+        .send-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .ai-indicator {
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 12px;
+            color: #28a745;
+        }
+
+        .typing-indicator {
+            padding: 10px 20px;
+            color: #666;
+            font-style: italic;
+            display: none;
+        }
+
+        .typing-indicator.show {
+            display: block;
+        }
+
+        .ai-suggestions {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .ai-suggestions h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .suggestion-chip {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .suggestion-chip:hover {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 95%;
+                height: 95vh;
+            }
+            
+            .sidebar {
+                width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🤖 AI-Enhanced Chat</h1>
+            <div class="connection-status">
+                <span class="status-indicator status-disconnected" id="statusIndicator"></span>
+                <span id="statusText">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="chat-body">
+            <div class="sidebar">
+                <div class="auth-section">
+                    <h3>🔐 Authentication</h3>
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" value="admin@test.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input type="password" id="password" value="123456">
+                    </div>
+                    <button class="btn btn-primary" onclick="login()">Login</button>
+                </div>
+
+                <div class="ai-controls">
+                    <h3>🤖 AI Assistant</h3>
+                    <div class="ai-toggle">
+                        <span>Enable AI</span>
+                        <div class="toggle-switch" id="aiToggle" onclick="toggleAI()"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="aiContext">Context (optional):</label>
+                        <input type="text" id="aiContext" placeholder="Add context for better AI responses">
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-chat">
+                <div class="messages-container" id="messagesContainer">
+                    <div class="message">
+                        <div class="message-avatar message-ai">🤖</div>
+                        <div class="message-content">
+                            <div class="message-header">AI Assistant</div>
+                            <div class="message-text">Hello! I'm your AI assistant. You can ask me anything, and I'll help you with questions, explanations, or just chat with you. Try asking me something!</div>
+                            <div class="message-time">Just now</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="typing-indicator" id="typingIndicator">
+                    🤖 AI is thinking...
+                </div>
+
+                <div class="ai-suggestions" id="aiSuggestions">
+                    <h4>💡 Quick Questions</h4>
+                    <div class="suggestion-chips">
+                        <div class="suggestion-chip" onclick="askSuggestion('What is the weather like today?')">Weather</div>
+                        <div class="suggestion-chip" onclick="askSuggestion('Tell me a joke')">Joke</div>
+                        <div class="suggestion-chip" onclick="askSuggestion('Explain quantum computing')">Quantum Computing</div>
+                        <div class="suggestion-chip" onclick="askSuggestion('How do I make a cake?')">Recipe</div>
+                        <div class="suggestion-chip" onclick="askSuggestion('What are the benefits of exercise?')">Exercise</div>
+                    </div>
+                </div>
+
+                <div class="input-section">
+                    <div class="input-container">
+                        <textarea 
+                            class="message-input" 
+                            id="messageInput" 
+                            placeholder="Type your message here... (Use /ai to ask the AI directly)"
+                            rows="1"
+                        ></textarea>
+                        <button class="btn send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+                            Send
+                            <span class="ai-indicator" id="aiIndicator" style="display: none;">🤖</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+    <script>
+        let authToken = '';
+        let email = '';
+        let connection = null;
+        let aiEnabled = false;
+        let isTyping = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            adjustTextareaHeight();
+        });
+
+        function setupEventListeners() {
+            const messageInput = document.getElementById('messageInput');
+            
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            messageInput.addEventListener('input', function() {
+                adjustTextareaHeight();
+                checkForAICommand();
+            });
+        }
+
+        function adjustTextareaHeight() {
+            const textarea = document.getElementById('messageInput');
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+
+        function checkForAICommand() {
+            const messageInput = document.getElementById('messageInput');
+            const aiIndicator = document.getElementById('aiIndicator');
+            const text = messageInput.value.trim();
+            
+            if (text.startsWith('/ai ')) {
+                aiIndicator.style.display = 'inline';
+            } else {
+                aiIndicator.style.display = 'none';
+            }
+        }
+
+        async function login() {
+            email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('http://localhost:5192/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    addMessage('System', '✅ Login successful!', 'system');
+                    connectSignalR();
+                } else {
+                    addMessage('System', `❌ Login failed: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                addMessage('System', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function connectSignalR() {
+            if (!authToken) {
+                addMessage('System', 'Please login first', 'error');
+                return;
+            }
+
+            try {
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl(`http://localhost:5192/chatHub?access_token=${authToken}`, {
+                        skipNegotiation: true,
+                        transport: signalR.HttpTransportType.WebSockets
+                    })
+                    .withAutomaticReconnect()
+                    .build();
+
+                connection.on("ReceiveMessage", (user, message) => {
+                    const isAI = user === "🤖 AI Assistant";
+                    const isAIQuestion = message.startsWith("🤖 AI Question:");
+                    
+                    if (isAI) {
+                        addMessage(user, message, 'ai');
+                        hideTypingIndicator();
+                    } else if (isAIQuestion) {
+                        addMessage(user, message, 'user');
+                    } else {
+                        addMessage(user, message, user === email ? 'user' : 'other');
+                    }
+                });
+
+                connection.on("UserConnected", (user) => {
+                    if (user !== email) {
+                        addMessage('System', `🔗 ${user} joined the chat`, 'system');
+                    }
+                });
+
+                connection.on("UserDisconnected", (user) => {
+                    if (user !== email) {
+                        addMessage('System', `🔌 ${user} left the chat`, 'system');
+                    }
+                });
+
+                await connection.start();
+                
+                updateStatus('connected');
+                document.getElementById('sendBtn').disabled = false;
+                addMessage('System', '✅ Connected to chat!', 'system');
+            } catch (error) {
+                updateStatus('disconnected');
+                addMessage('System', `❌ Connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function sendMessage() {
+            if (!connection) {
+                addMessage('System', 'Please connect to chat first', 'error');
+                return;
+            }
+
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) {
+                return;
+            }
+
+            // Check if it's an AI command
+            if (message.startsWith('/ai ')) {
+                const aiQuestion = message.substring(4);
+                const context = document.getElementById('aiContext').value;
+                
+                showTypingIndicator();
+                
+                try {
+                    await connection.invoke("AskAI", aiQuestion, context || null, true);
+                } catch (error) {
+                    addMessage('System', `❌ AI Error: ${error.message}`, 'error');
+                    hideTypingIndicator();
+                }
+            } else {
+                // Regular message
+                try {
+                    await connection.invoke("SendMessage", message);
+                } catch (error) {
+                    addMessage('System', `❌ Error sending message: ${error.message}`, 'error');
+                }
+            }
+
+            messageInput.value = '';
+            adjustTextareaHeight();
+            checkForAICommand();
+        }
+
+        function askSuggestion(question) {
+            const messageInput = document.getElementById('messageInput');
+            messageInput.value = `/ai ${question}`;
+            checkForAICommand();
+            messageInput.focus();
+        }
+
+        function toggleAI() {
+            const toggle = document.getElementById('aiToggle');
+            aiEnabled = !aiEnabled;
+            toggle.classList.toggle('active', aiEnabled);
+            
+            if (aiEnabled) {
+                addMessage('System', '🤖 AI Assistant enabled', 'system');
+            } else {
+                addMessage('System', '🤖 AI Assistant disabled', 'system');
+            }
+        }
+
+        function showTypingIndicator() {
+            isTyping = true;
+            document.getElementById('typingIndicator').classList.add('show');
+        }
+
+        function hideTypingIndicator() {
+            isTyping = false;
+            document.getElementById('typingIndicator').classList.remove('show');
+        }
+
+        function addMessage(user, message, type) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            let avatar = '👤';
+            let messageClass = 'message-other';
+            
+            switch(type) {
+                case 'user':
+                    avatar = user.charAt(0).toUpperCase();
+                    messageClass = 'message-user';
+                    break;
+                case 'ai':
+                    avatar = '🤖';
+                    messageClass = 'message-ai';
+                    break;
+                case 'system':
+                    avatar = 'ℹ️';
+                    messageClass = 'message-other';
+                    break;
+                case 'error':
+                    avatar = '❌';
+                    messageClass = 'message-other';
+                    break;
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar ${messageClass}">${avatar}</div>
+                <div class="message-content">
+                    <div class="message-header">${user}</div>
+                    <div class="message-text">${message}</div>
+                    <div class="message-time">${new Date().toLocaleTimeString()}</div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function updateStatus(status) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.className = 'status-indicator';
+            
+            switch(status) {
+                case 'connected':
+                    indicator.classList.add('status-connected');
+                    statusText.textContent = 'Connected';
+                    break;
+                case 'disconnected':
+                    indicator.classList.add('status-disconnected');
+                    statusText.textContent = 'Disconnected';
+                    break;
+                case 'connecting':
+                    indicator.classList.add('status-connecting');
+                    statusText.textContent = 'Connecting...';
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>
